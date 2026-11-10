@@ -123,7 +123,7 @@ def renew_via_browser(username, password):
         try:
             # 步骤1: 直接导航到webapps页面（使用wang5948的URL）
             print("步骤1: 导航到Web应用页面...")
-            webapp_url = "https://www.pythonanywhere.com/user/wang5948/webapps/#tab_id_wang5948_pythonanywhere_com"
+            webapp_url = f"https://www.pythonanywhere.com/user/{username}/webapps/#tab_id_{username}_pythonanywhere_com"
 
             print(f"正在访问: {webapp_url}")
             try:
@@ -238,7 +238,7 @@ def renew_via_browser(username, password):
 
             # 方法1: 使用精确的CSS选择器（最优先）
             try:
-                css_selector = "input[type='submit'][class='btn btn-warning webapp_extend'][value='Run until 3 months from today']"
+                css_selector = "input[type='submit'][class='btn btn-warning webapp_extend'][value='Run until 1 month from today']"
                 renew_button = page.wait_for_selector(css_selector, timeout=10000)
                 if renew_button:
                     print("✓ 使用精确CSS选择器找到续期按钮")
@@ -256,7 +256,7 @@ def renew_via_browser(username, password):
             # 方法2: 通过value属性查找
             if not renew_button:
                 try:
-                    renew_button = page.wait_for_selector("input[value='Run until 3 months from today']", timeout=5000)
+                    renew_button = page.wait_for_selector("input[value='Run until 1 month from today']", timeout=5000)
                     if renew_button:
                         print("✓ 通过value属性找到续期按钮")
                 except Exception as e:
