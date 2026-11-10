@@ -1,101 +1,13 @@
 """
 PythonAnywhere 自动续期脚本
-优先使用API接口，如果不可用则回退到浏览器自动化
+使用浏览器自动化
 """
 
 import os
 import sys
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
-
-def get_session():
-    """创建带重试机制的requests会话"""
-    session = requests.Session()
-    retry_strategy = Retry(
-        total=3,
-        backoff_factor=1,
-        status_forcelist=[429, 500, 502, 503, 504],
-    )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-    return session
-
-
-def renew_via_api(username, password):
-    """尝试通过API接口续期"""
-    session = get_session()
-    
-    # 1. 登录获取session
-    print("正在登录PythonAnywhere...")
-    login_url = "https://www.pythonanywhere.com/login/"
-    
-    # 先获取登录页面获取CSRF token
-    response = session.get(login_url)
-    if response.status_code != 200:
-        return False, f"无法访问登录页面: {response.status_code}"
-    
-    # 尝试从cookie或页面中获取CSRF token
-    csrf_token = None
-    if 'csrftoken' in session.cookies:
-        csrf_token = session.cookies['csrftoken']
-    elif 'csrfmiddlewaretoken' in response.text:
-        # 从HTML中提取CSRF token
-        import re
-        match = re.search(r'name=["\']csrfmiddlewaretoken["\'] value=["\']([^"\']+)["\']', response.text)
-        if match:
-            csrf_token = match.group(1)
-    
-    # 2. 提交登录表单
-    login_data = {
-        'auth-username': username,
-        'auth-password': password,
-    }
-    if csrf_token:
-        login_data['csrfmiddlewaretoken'] = csrf_token
-    
-    headers = {
-        'Referer': login_url,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-    
-    response = session.post(login_url, data=login_data, headers=headers, allow_redirects=False)
-    
-    # 检查是否登录成功（通常会有重定向）
-    if response.status_code not in [200, 302]:
-        return False, f"登录失败: {response.status_code}"
-    
-    # 如果重定向，跟随重定向
-    if response.status_code == 302:
-        session.get(response.headers.get('Location', '/'))
-    
-    # 3. 尝试调用续期API
-    # 根据页面结构，续期可能是POST到 /user/{username}/webapps/{webapp_id}/extend/
-    webapp_id = f"{username}_pythonanywhere_com"
-    extend_url = f"https://www.pythonanywhere.com/user/{username}/webapps/{webapp_id}/extend/"
-    
-    # 尝试POST请求
-    response = session.post(extend_url, headers=headers, allow_redirects=True)
-    
-    if response.status_code == 200:
-        # 检查响应内容确认是否成功
-        if 'success' in response.text.lower() or 'extended' in response.text.lower():
-            return True, "续期成功（通过API）"
-        elif 'error' in response.text.lower():
-            return False, "API返回错误"
-    
-    return False, "API方式不可用，将使用浏览器自动化"
-
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
 def renew_via_browser(username, password):
-    """使用浏览器自动化续期（回退方案）"""
-    try:
-        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-    except ImportError:
-        return False, "Playwright未安装，请运行: pip install playwright && playwright install chromium"
-    
     print("使用浏览器自动化方式...")
     
     with sync_playwright() as p:
@@ -121,9 +33,9 @@ def renew_via_browser(username, password):
         page = context.new_page()
         
         try:
-            # 步骤1: 直接导航到webapps页面（使用wang5948的URL）
+            # 步骤1: 直接导航到webapps页面
             print("步骤1: 导航到Web应用页面...")
-            webapp_url = f"https://www.pythonanywhere.com/user/{username}/webapps/#id_{username}_pythonanywhere_com"
+            webapp_url = f"https://www.pythonanywhere.com/user/{username}/webapps/#id_{username.lower()}_pythonanywhere_com"
 
             print(f"正在访问: {webapp_url}")
             try:
@@ -360,7 +272,7 @@ def main():
     print(f"用户名: {username}")
     print(f"Web应用ID: {webapp_id}\n")
     
-    # 直接使用浏览器自动化（API方法暂时跳过）
+    # 直接使用浏览器自动化
     print("[浏览器自动化] 开始续期流程...")
     success, message = renew_via_browser(username, password)
     
