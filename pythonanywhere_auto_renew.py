@@ -123,7 +123,7 @@ def renew_via_browser(username, password):
         try:
             # 步骤1: 直接导航到webapps页面（使用wang5948的URL）
             print("步骤1: 导航到Web应用页面...")
-            webapp_url = f"https://www.pythonanywhere.com/user/{username}/webapps/#tab_id_{username}_pythonanywhere_com"
+            webapp_url = f"https://www.pythonanywhere.com/user/{username}/webapps/#id_{username}_pythonanywhere_com"
 
             print(f"正在访问: {webapp_url}")
             try:
